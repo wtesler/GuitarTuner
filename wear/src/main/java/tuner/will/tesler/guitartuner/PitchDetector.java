@@ -21,11 +21,19 @@ import android.util.Log;
 import android.widget.SeekBar;
 import android.widget.TextView;
 
+import java.io.BufferedOutputStream;
+import java.io.FileNotFoundException;
+import java.io.FileOutputStream;
+import java.io.PrintStream;
 import java.util.HashMap;
+import java.util.Map;
 
 import edu.emory.mathcs.jtransforms.fft.DoubleFFT_1D;
 
 public class PitchDetector {
+
+   final static String TAG = "PitchDetector";
+
     // Currently, only this combination of rate, encoding and channel mode
     // actually works.
     private final static int RATE = 8000;
@@ -35,12 +43,9 @@ public class PitchDetector {
     private final static int BUFFER_SIZE_IN_MS = 3000;
     private final static int CHUNK_SIZE_IN_SAMPLES = 4096; // = 2 ^
     // CHUNK_SIZE_IN_SAMPLES_POW2
-    private final static int CHUNK_SIZE_IN_MS = 1000 * CHUNK_SIZE_IN_SAMPLES
-            / RATE;
-    private final static int BUFFER_SIZE_IN_BYTES = RATE * BUFFER_SIZE_IN_MS
-            / 1000 * 2;
-    private final static int CHUNK_SIZE_IN_BYTES = RATE * CHUNK_SIZE_IN_MS
-            / 1000 * 2;
+    private final static int CHUNK_SIZE_IN_MS = 1000 * CHUNK_SIZE_IN_SAMPLES/ RATE;
+    private final static int BUFFER_SIZE_IN_BYTES = RATE * BUFFER_SIZE_IN_MS / 2048;
+    private final static int CHUNK_SIZE_IN_BYTES = RATE * CHUNK_SIZE_IN_MS/ 1000 * 2;
     private final static int MIN_FREQUENCY = 50; // HZ
     private final static int MAX_FREQUENCY = 600; // HZ - it's for guitar,
     // should be enough
@@ -50,7 +55,7 @@ public class PitchDetector {
     private Handler handler;
     private SeekBar seekBar;
     private TextView pitch;
-    private static volatile boolean shouldRun;
+    private static volatile boolean shouldRun, shouldSmooth=false;
 
     public native void DoFFT(double[] data, int size);  // an NDK library 'fft-jni'
 
@@ -70,22 +75,29 @@ public class PitchDetector {
         AsyncTask<Void,Void,Void> task = new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
+
                 android.os.Process
                         .setThreadPriority(Process.THREAD_PRIORITY_AUDIO);
+
                 recorder = new AudioRecord(AudioSource.MIC, RATE, CHANNEL_MODE,
                         ENCODING, 6144);
                 if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
                     return null;
                 }
+
                 short[] audio_data = new short[BUFFER_SIZE_IN_BYTES / 2];
                 double[] data = new double[CHUNK_SIZE_IN_SAMPLES * 2];
                 final int min_frequency_fft = Math.round(MIN_FREQUENCY
                         * CHUNK_SIZE_IN_SAMPLES / RATE);
                 final int max_frequency_fft = Math.round(MAX_FREQUENCY
                         * CHUNK_SIZE_IN_SAMPLES / RATE);
-                recorder.startRecording();
+
+                 recorder.startRecording();
                 while (shouldRun) {
                     recorder.read(audio_data, 0, CHUNK_SIZE_IN_BYTES / 2);
+                    if (shouldSmooth) {
+                        smooth(audio_data, (short) seekBar.getProgress());
+                    }
                     for (int i = 0; i < CHUNK_SIZE_IN_SAMPLES; i++) {
                         data[i * 2] = audio_data[i];
                         data[i * 2 + 1] = 0;
@@ -121,7 +133,7 @@ public class PitchDetector {
                             best_amplitude = normalized_amplitude;
                         }
                     }
-                    PostToUI(frequencies, best_frequency);
+                    PostToUI(frequencies, best_frequency, System.currentTimeMillis());
                 }
 
                 recorder.stop();
@@ -132,16 +144,43 @@ public class PitchDetector {
         }.execute();
     }
 
+    private void smooth(short[] data, short smoothFactor) {
+        short value = data[0]; // start with the first input
+        for (int i=1, len= data.length; i<len; ++i){
+            short currentValue = data[i];
+            value += (currentValue - value) / smoothFactor;
+            data[i] = value;
+        }
+    }
+
+    private static Long timeStart;
     private void PostToUI(
             final HashMap<Double, Double> frequencies,
-            final double pitchVal) {
+            final double pitchVal, final long time) {
         handler.post(new Runnable() {
             @Override
             public void run() {
-                seekBar.setProgress((int) pitchVal);
-                pitch.setText(Integer.toString((int)pitchVal));
-                Log.d("PitchDetector", "Pitch: " + pitchVal);
+                //seekBar.setProgress((int) pitchVal);
+                pitch.setText(Integer.toString((int) pitchVal));
+                long timeDiff;
+                if (timeStart == null) {
+                    timeStart = time;
+                    timeDiff = 0;
+                } else {
+                    timeDiff = time - timeStart;
+                }
+                Log.d(TAG, "Pitch: " +  pitchVal);
+                Log.d(TAG, "Time: " + timeDiff);
+                for (Map.Entry<Double,Double> freq  : frequencies.entrySet()){
+                    String key = freq.getKey().toString();
+                    String value = freq.getValue().toString();
+                    Log.d(TAG, key + " " + value);
+                }
             }
         });
+    }
+
+    public void toggleSooth() {
+        shouldSmooth = !shouldSmooth;
     }
 }

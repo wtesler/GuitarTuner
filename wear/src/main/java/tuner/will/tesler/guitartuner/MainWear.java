@@ -26,11 +26,10 @@ public class MainWear extends Activity {
     private SeekBar tuner;
     private View background;
     private ImageView rotate;
-    Button start,stop;
+    Button start,stop, smooth;
     private boolean sideways = false;
     private PitchDetector pd;
     private Handler handler = new Handler();
-    private SeekBar seekBar;
     private TextView pitch;
 
     @Override
@@ -119,11 +118,20 @@ public class MainWear extends Activity {
                     }
                 });
 
-                seekBar = (SeekBar) stub.findViewById(R.id.sb_tuner);
+                smooth = (Button) stub.findViewById(R.id.bt_smooth);
+                smooth.setOnClickListener(new View.OnClickListener() {
+                    @Override
+                    public void onClick(View v) {
+                        pd.toggleSooth();
+                        Button smooth = ((Button)v);
+                        smooth.setTextColor(smooth.getCurrentTextColor() == Color.RED ?
+                                Color.GREEN : Color.RED);
+                    }
+                });
 
                 pitch = (TextView) stub.findViewById(R.id.tv_pitch);
 
-                pd = new PitchDetector(handler, seekBar, pitch);
+                pd = new PitchDetector(handler, tuner, pitch);
             }
         });
 
@@ -131,7 +139,7 @@ public class MainWear extends Activity {
 
     @Override
     protected void onPause() {
-        //Yin.stop(this);
+        pd.stop();
         super.onPause();
     }
 
