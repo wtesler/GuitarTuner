@@ -5,7 +5,7 @@
     xmlns:tools="http://schemas.android.com/tools"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
-    android:background="#00FF00"
+    android:background="#ff8cbbff"
     android:orientation="vertical"
     tools:context=".MainWear"
     tools:deviceIds="wear_square">
@@ -25,30 +25,6 @@
         android:shadowRadius=".1"
         android:textSize="40dp"/>
 
-    <ImageView
-        android:id="@+id/iv_rotate"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentLeft="true"
-        android:layout_alignParentTop="true"
-        android:clickable="true"
-        android:gravity="center"
-        android:src="@android:drawable/ic_menu_rotate"/>
-
-
-    <TextView
-        android:id="@+id/tv_note"
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:layout_centerInParent="true"
-        android:gravity="center"
-        android:shadowColor="@color/grey"
-        android:shadowDx="1"
-        android:shadowDy="1"
-        android:shadowRadius=".1"
-        android:text="E"
-        android:textSize="80dp"/>
-
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -61,15 +37,6 @@
             android:layout_height="40dp"
             android:text="S"
             android:textColor="@color/blue"/>
-
-        <SeekBar
-            android:id="@+id/sb_tuner"
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:max="150"
-            android:progress="0"
-            />
 
         <Button
             android:id="@+id/bt_smooth"
@@ -86,5 +53,32 @@
             android:textColor="@color/red"/>
 
     </LinearLayout>
+
+    <SeekBar
+        android:id="@+id/seekBar0"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_weight="1"
+        android:max="100"
+        android:progress="0"
+        android:layout_below="@+id/tv_pitch"
+        android:layout_alignParentStart="true"/>
+
+    <SeekBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/seekBar1"
+        android:max="10"
+        android:progress="5"
+        android:layout_centerVertical="true"
+        android:layout_alignParentStart="true"/>
+
+    <SeekBar
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:id="@+id/seekBar2"
+        android:progress="3000"
+        android:max="4000"
+        android:layout_below="@+id/seekBar1"/>
 
 </RelativeLayout>

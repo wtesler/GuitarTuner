@@ -42,7 +42,7 @@ for line in content:
                 #print(splitLine[0])
                 freqs.append(float(splitLine[0]))
                 amps.append(float(splitLine[1]))
-plt.plot(times, pitches, '.r-', )
+#plt.plot(times, pitches, '.r-', )
 strings = [82.41, 110.00, 146.83, 196.00, 246.94, 329.63]
 for string in strings:      
     plt.axhline(string, color='g')
