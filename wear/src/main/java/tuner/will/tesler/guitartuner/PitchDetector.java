@@ -35,7 +35,7 @@ public class PitchDetector {
     // private static int BUFFER_RATE_IN_MS = 3000; //???????????
 
     //Hamming Window used by FFT
-    private final static int WINDOW_SIZE_IN_SAMPLES =  8192;
+    private final static int WINDOW_SIZE_IN_SAMPLES = 8192;
     private final static int WINDOW_SIZE_IN_MS = 1000 * WINDOW_SIZE_IN_SAMPLES / RATE;
     private final static int WINDOW_SIZE_IN_SHORTS = RATE * WINDOW_SIZE_IN_MS / 1000;
     private final static int WINDOW_SIZE_IN_BYTES = 2 * WINDOW_SIZE_IN_SAMPLES;
