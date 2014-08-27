@@ -14,12 +14,8 @@ import android.media.AudioFormat;
 import android.media.AudioRecord;
 import android.media.MediaRecorder.AudioSource;
 import android.os.AsyncTask;
-import android.os.Handler;
 import android.os.Process;
 import android.util.Log;
-import android.view.View;
-import android.widget.SeekBar;
-import android.widget.TextView;
 
 import java.util.HashMap;
 
@@ -32,27 +28,21 @@ public class PitchDetector {
     // Currently, only this combination of rate, encoding and channel mode
     // actually works on Android.
     private final static int RATE = 8000;
-    private final static int CHANNEL_MODE = AudioFormat.CHANNEL_CONFIGURATION_MONO;
+    private final static int CHANNEL_MODE = AudioFormat.CHANNEL_IN_MONO;
     private final static int ENCODING = AudioFormat.ENCODING_PCM_16BIT;
 
-    private final static double[] stringFreqs = {82.41, 110.0, 146.83, 196.00, 246.94, 329.63};
-
-    private static HashMap<Double, String> stringNames = new HashMap<Double,String>();
-
     //Each Buffer read in from the Microphone is indicative of 3 seconds passing
-    private static int BUFFER_RATE_IN_MS = 3000;
+    // private static int BUFFER_RATE_IN_MS = 3000; //???????????
 
-    //Hanning Window used by FFT
-    private final static int WINDOW_SIZE_IN_SAMPLES = 4096;
+    //Hamming Window used by FFT
+    private final static int WINDOW_SIZE_IN_SAMPLES =  8192;
     private final static int WINDOW_SIZE_IN_MS = 1000 * WINDOW_SIZE_IN_SAMPLES / RATE;
     private final static int WINDOW_SIZE_IN_SHORTS = RATE * WINDOW_SIZE_IN_MS / 1000;
-
-    // Each buffer has this much data inside of it.
-    private final static int BUFFER_SIZE_IN_BYTES = RATE * BUFFER_RATE_IN_MS / 2048;
+    private final static int WINDOW_SIZE_IN_BYTES = 2 * WINDOW_SIZE_IN_SAMPLES;
 
     // Range of guitar frequencies.
     private final static int MIN_FREQUENCY = 50; // HZ
-    private final static int MAX_FREQUENCY = 500; // HZ - it's for guitar,
+    private final static int MAX_FREQUENCY = 660; // HZ - it's for guitar,
 
     // (TODO) Not sure about this one yet.
     private static int DRAW_FREQUENCY_STEP = 5;
@@ -60,38 +50,16 @@ public class PitchDetector {
     // This is a microphone, essentially.
     private AudioRecord recorder;
 
-    // Message handler used for logging.
-    private Handler handler;
-
-    // Scrubbers for tweaking algorithm constants.
-    private SeekBar A, B, C;
-
-    // Displays the current tv_pitch to the screen.
-    private TextView tv_pitch;
-
-    private View background;
+    private PitchDetectedListener listener;
 
     // Flow control switches.
     private static volatile boolean shouldRun, shouldSmooth=false;
 
     // Constructor
-    public PitchDetector(Handler handler, SeekBar A, SeekBar B, SeekBar C,
-                         TextView pitch, View background) {
-        shouldRun = true;
-        this.handler = handler;
-        this.A = A;
-        this.B = B;
-        this.C = C;
-        this.tv_pitch = pitch;
-        this.background = background;
+    public PitchDetector(PitchDetectedListener listener) {
 
-        int i =0;
-        stringNames.put(stringFreqs[i++], "E");
-        stringNames.put(stringFreqs[i++], "A");
-        stringNames.put(stringFreqs[i++], "D");
-        stringNames.put(stringFreqs[i++], "G");
-        stringNames.put(stringFreqs[i++], "B");
-        stringNames.put(stringFreqs[i++], "e");
+        shouldRun = true;
+        this.listener = listener;
     }
 
     // Stop recording and close microphone.
@@ -102,13 +70,10 @@ public class PitchDetector {
     // Main loop of the class.
     public void run() {
 
-        DRAW_FREQUENCY_STEP = B.getProgress();
-        BUFFER_RATE_IN_MS = C.getProgress();
-
         shouldRun = true;
 
         // Handles the audio processing on a background thread.
-        AsyncTask<Void,Void,Void> task = new AsyncTask<Void, Void, Void>() {
+        new AsyncTask<Void, Void, Void>() {
             @Override
             protected Void doInBackground(Void... params) {
 
@@ -118,7 +83,7 @@ public class PitchDetector {
 
                 // Define the recorder here so it's off of the main thread.
                 recorder = new AudioRecord(AudioSource.MIC, RATE, CHANNEL_MODE,
-                        ENCODING, BUFFER_SIZE_IN_BYTES);
+                        ENCODING, WINDOW_SIZE_IN_BYTES);
 
                 // Check if Microphone state is good.
                 if (recorder.getState() != AudioRecord.STATE_INITIALIZED) {
@@ -127,7 +92,7 @@ public class PitchDetector {
                 }
 
                 // Stores Raw PCM audio data
-                short[] audio_data = new short[BUFFER_SIZE_IN_BYTES / 2];
+                short[] audio_data = new short[WINDOW_SIZE_IN_SAMPLES];
 
                 // Store Phase audio data
                 double[] fft_data = new double[WINDOW_SIZE_IN_SAMPLES * 2];
@@ -156,7 +121,7 @@ public class PitchDetector {
 
                     //Smooth
                     //if (shouldSmooth) {
-                    //smooth(audio_data, (short) 35);
+                    smooth(audio_data, (short) 35);
                     //}
 
                     //Prepare FFT array
@@ -209,15 +174,16 @@ public class PitchDetector {
                         // Place newly calculated amplitude
                         freqMap.put(draw_freq, decayed_amp + freq_amp);
 
-                        // Freq with greatest amplitude is our candidate pitch.
+                        // Freq with greatest amplitude is our candidate tv_pitch.
                         if (norm_amp > best_amplitude) {
                             pitch = current_frequency;
                             best_amplitude = norm_amp;
                         }
                     }
 
-                    // Let the UI know what has transpired.
-                    PostToUI(pitch, best_amplitude, System.currentTimeMillis());
+                    listener.onPitchDetected(pitch, best_amplitude);
+
+
                 }
 
                 // Stop and free the microphone.
@@ -238,78 +204,7 @@ public class PitchDetector {
         }
     }
 
-    private static Long timeStart;
-    private void PostToUI(
-            final double pitch,
-            final double amplitude, final long time) {
-        handler.post(new Runnable() {
-            @Override
-            public void run() {
-                //A.setProgress((int) pitchVal);
-                //DecimalFormat df = new DecimalFormat("#.##");
-                //tv_pitch.setText(df.format(pitch));
-//                long timeDiff;
-//                if (timeStart == null) {
-//                    timeStart = time;
-//                    timeDiff = 0;
-//                } else {
-//                    timeDiff = time - timeStart;
-//                }
-                Log.d(TAG, "Pitch: " +  pitch + " Amplitude: " + amplitude);
-                //Log.d(TAG, "Time: " + timeDiff);
-//                for (Map.Entry<Double,Double> freq  : frequencies.entrySet()){
-//                    String key = freq.getKey().toString();
-//                    String value = freq.getValue().toString();
-//                    //Log.d(TAG, key + " " + value);
-//                }
-
-                // Is the amplitude over 10 billion? (crazy I know).
-                if (amplitude > 10000000000.0) {
-
-                    double doublePitch = pitch * 2;
-                    double halfPitch = pitch / 2;
-
-                    for (double freq : stringFreqs) {
-                        if (pitch > freq - 5 && pitch < freq + 5) {
-                            Log.d(TAG, stringNames.get(freq));
-                            display_color(pitch, freq);
-                            return;
-                        }
-                    }
-                    for (double freq : stringFreqs) {
-                        if (doublePitch > freq - 5 && doublePitch < freq + 5) {
-                            Log.d(TAG, stringNames.get(freq));
-                            display_color(doublePitch, freq);
-                            return;
-                        }
-                    }
-                    for (double freq : stringFreqs) {
-                        if (halfPitch > freq - 5 && halfPitch < freq + 5) {
-                            Log.d(TAG, stringNames.get(freq));
-                            display_color(halfPitch, freq);
-                            return;
-                        }
-                    }
-                }
-            }
-        });
-    }
-
-    public void toggleSmooth() {
-        shouldSmooth = !shouldSmooth;
-    }
-
-    private void display_color(double pitch, double targetPitch) {
-        tv_pitch.setText(stringNames.get(targetPitch));
-
-        double diff = pitch - targetPitch;
-
-        A.setProgress(50 + ((int) diff * 10));
-
-        Log.d(TAG, "Pitch difference: " + diff);
-//        double R = diff * 51;
-//        double G = 255 - (diff * 51);
-//        int B = 0;
-//        background.setBackgroundColor(Color.rgb((int)R,(int) G, B));
+    interface PitchDetectedListener {
+        void onPitchDetected(double pitch, double amplitude);
     }
 }

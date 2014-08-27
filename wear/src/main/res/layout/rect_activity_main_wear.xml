@@ -10,29 +10,17 @@
     tools:context=".MainWear"
     tools:deviceIds="wear_square">
 
-    <TextView
-        android:id="@+id/tv_pitch"
-        android:layout_width="wrap_content"
-        android:layout_height="wrap_content"
-        android:layout_alignParentRight="true"
-        android:layout_alignParentTop="true"
-        android:gravity="center"
-        android:paddingRight="10dp"
-        android:shadowColor="@color/grey"
-        android:shadowDx="1"
-        android:shadowDy="1"
-        android:text="0"
-        android:shadowRadius=".1"
-        android:textSize="40dp"/>
-
     <LinearLayout
+        android:id="@+id/ll_buttonbar"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
+        style="@android:style/ButtonBar"
         android:layout_alignParentBottom="true"
         android:orientation="horizontal">
 
         <Button
             android:id="@+id/bt_start"
+            style="@android:style/Widget.DeviceDefault.Button.Inset"
             android:layout_width="40dp"
             android:layout_height="40dp"
             android:text="S"
@@ -41,6 +29,7 @@
         <Button
             android:id="@+id/bt_smooth"
             android:layout_width="40dp"
+            style="@android:style/Widget.DeviceDefault.Button.Inset"
             android:layout_height="40dp"
             android:text="~"
             android:textColor="@color/green"/>
@@ -49,36 +38,40 @@
             android:id="@+id/bt_stop"
             android:layout_width="40dp"
             android:layout_height="40dp"
+            style="@android:style/Widget.DeviceDefault.Button.Inset"
             android:text="F"
             android:textColor="@color/red"/>
 
     </LinearLayout>
 
-    <SeekBar
-        android:id="@+id/seekBar0"
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/tv_note"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_weight="1"
-        android:max="100"
-        android:progress="0"
-        android:layout_below="@+id/tv_pitch"
-        android:layout_alignParentStart="true"/>
+        android:layout_centerHorizontal="true"
+        android:layout_alignParentTop="true"
+        android:gravity="center"
+        android:paddingRight="10dp"
+        android:paddingLeft="10dp"
+        android:shadowColor="@color/grey"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:text="..."
+        android:shadowRadius=".1"
+        android:textSize="40sp"/>
 
-    <SeekBar
-        android:layout_width="match_parent"
+    <TextView
+        android:id="@+id/tv_pitch"
+        android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:id="@+id/seekBar1"
-        android:max="10"
-        android:progress="5"
-        android:layout_centerVertical="true"
-        android:layout_alignParentStart="true"/>
-
-    <SeekBar
-        android:layout_width="match_parent"
-        android:layout_height="wrap_content"
-        android:id="@+id/seekBar2"
-        android:progress="3000"
-        android:max="4000"
-        android:layout_below="@+id/seekBar1"/>
+        android:layout_centerHorizontal="true"
+        android:gravity="center"
+        android:layout_above="@id/ll_buttonbar"
+        android:shadowColor="@color/grey"
+        android:shadowDx="1"
+        android:shadowDy="1"
+        android:text="0"
+        android:shadowRadius=".1"
+        android:textSize="40sp"/>
 
 </RelativeLayout>
